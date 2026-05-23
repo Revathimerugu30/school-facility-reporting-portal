@@ -2,8 +2,8 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 
-const jwtSecret = process.env.JWT_SECRET || 'dev_jwt_secret';
-const signToken = (id) => jwt.sign({ id }, jwtSecret, { expiresIn: '7d' });
+const getJwtSecret = () => process.env.JWT_SECRET || 'dev_jwt_secret';
+const signToken = (id) => jwt.sign({ id }, getJwtSecret(), { expiresIn: '7d' });
 
 export const register = async (req, res) => {
   const { name, email, password, role, schoolId } = req.body;

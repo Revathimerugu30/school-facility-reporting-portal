@@ -3,11 +3,15 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   plugins: [react()],
+  build: {
+    outDir: 'dist',
+    sourcemap: false,
+  },
   server: {
     proxy: {
-      '/api': 'https://school-facility-reporting-portal.onrender.com',
+      '/api': 'http://localhost:5000',
       '/socket.io': {
-        target: 'https://school-facility-reporting-portal.onrender.com',
+        target: 'http://localhost:5000',
         ws: true,
       },
     },

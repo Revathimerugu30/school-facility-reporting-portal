@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import api from '../api/api.js';
 
 const ReportIssue = () => {
@@ -6,6 +6,7 @@ const ReportIssue = () => {
   const [image, setImage] = useState(null);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const fileInputRef = useRef(null);
 
   const handleChange = (event) => {
     setForm({ ...form, [event.target.name]: event.target.value });
@@ -27,6 +28,9 @@ const ReportIssue = () => {
       setError('');
       setForm({ title: '', description: '', category: 'Furniture', priority: 'Low', location: '' });
       setImage(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     } catch (error) {
       setError(error.response?.data?.error || 'Failed to submit issue');
       setMessage('');
@@ -79,7 +83,7 @@ const ReportIssue = () => {
         </label>
         <label className="block">
           <span className="text-sm font-medium text-slate-700">Upload Image</span>
-          <input type="file" accept="image/*" onChange={handleImage} className="mt-2 w-full" />
+          <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImage} className="mt-2 w-full" />
         </label>
         <button type="submit" className="w-full rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-800">Submit Issue</button>
       </form>

@@ -12,13 +12,27 @@ const Login = () => {
   const handleSubmit = async (event) => {
     event.preventDefault();
     try {
-      const response = await api.post('/auth/login', form);
+      const payload = {
+        email: form.email || (document.querySelector('input[name="email"]')?.value || ''),
+        password: form.password || (document.querySelector('input[name="password"]')?.value || ''),
+      };
+
+      const response = await api.post('/auth/login', payload);
+      console.log('Login success, storing token');
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('user', JSON.stringify(response.data.user));
       const redirectPath = response.data.user.role === 'admin' ? '/admin' : '/';
       navigate(redirectPath);
+      // Fallback in case React Router navigation doesn't take effect
+      setTimeout(() => {
+        if (window.location.pathname !== redirectPath) {
+          window.location.href = redirectPath;
+        }
+      }, 200);
     } catch (err) {
-      setError(err.response?.data?.error || 'Login failed');
+      console.error('Login error', err);
+      const message = err.response?.data?.error || err.message || 'Login failed';
+      setError(message);
     }
   };
 

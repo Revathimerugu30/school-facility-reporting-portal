@@ -12,13 +12,29 @@ const Register = () => {
   const handleSubmit = async (event) => {
     event.preventDefault();
     try {
-      const response = await api.post('/auth/register', form);
+      const payload = {
+        name: form.name || (document.querySelector('input[name="name"]')?.value || ''),
+        schoolId: form.schoolId || (document.querySelector('input[name="schoolId"]')?.value || ''),
+        email: form.email || (document.querySelector('input[name="email"]')?.value || ''),
+        password: form.password || (document.querySelector('input[name="password"]')?.value || ''),
+        role: form.role || (document.querySelector('select[name="role"]')?.value || 'teacher'),
+      };
+
+      const response = await api.post('/auth/register', payload);
+      console.log('Register success, storing token');
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('user', JSON.stringify(response.data.user));
       const redirectPath = response.data.user.role === 'admin' ? '/admin' : '/';
       navigate(redirectPath);
+      // Fallback full-page redirect if SPA navigation fails
+      setTimeout(() => {
+        if (window.location.pathname !== redirectPath) {
+          window.location.href = redirectPath;
+        }
+      }, 200);
     } catch (err) {
-      const message = err.response?.data?.error || 'Registration failed';
+      console.error('Registration error', err);
+      const message = err.response?.data?.error || err.message || 'Registration failed';
       setError(message === 'Email already registered' ? 'Email already registered. Please login.' : message);
     }
   };

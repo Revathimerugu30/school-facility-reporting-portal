@@ -47,24 +47,34 @@ export const createIssue = async (req, res) => {
     return res.status(400).json({ error: 'Missing required fields' });
   }
 
-  if (req.file) {
+  if (req.file && req.file.buffer) {
     if (cloudinaryConfigured) {
-      const result = await uploadImage(req.file.buffer);
-      imageUrl = result.secure_url;
+      try {
+        const result = await uploadImage(req.file.buffer);
+        imageUrl = result.secure_url || '';
+      } catch (uploadError) {
+        console.warn('Cloudinary upload failed, falling back to local image storage:', uploadError.message || uploadError);
+        imageUrl = saveLocalImage(req.file.buffer, req.file.originalname);
+      }
     } else {
       imageUrl = saveLocalImage(req.file.buffer, req.file.originalname);
     }
   }
 
-  const issue = await Issue.create({
+  const issueData = {
     title,
     description,
     category,
     priority,
     location,
-    image: imageUrl,
     createdBy: req.user._id,
-  });
+  };
+
+  if (imageUrl) {
+    issueData.image = imageUrl;
+  }
+
+  const issue = await Issue.create(issueData);
 
   const notification = await Notification.create({
     userId: req.user._id,

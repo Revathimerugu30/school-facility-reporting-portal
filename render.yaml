@@ -1,0 +1,39 @@
+services:
+  - type: web
+    name: school-facility-api
+    runtime: node
+    plan: free
+    buildCommand: npm install --workspaces && npm --prefix client run build
+    startCommand: npm --prefix server run start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGO_URI
+        fromDatabase:
+          name: school-facility-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: PORT
+        value: 10000
+      - key: CLIENT_URL
+        value: https://school-facility-reporting-portal.onrender.com
+      - key: DEFAULT_ADMIN_EMAIL
+        value: seed-admin@school.local
+      - key: DEFAULT_ADMIN_PASSWORD
+        value: Admin@123
+      - key: DEFAULT_ADMIN_NAME
+        value: Admin
+      - key: DEFAULT_ADMIN_SCHOOL_ID
+        value: ADMIN001
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+
+databases:
+  - name: school-facility-db
+    plan: free
+    ipAllowList: []

@@ -1,8 +1,8 @@
+import 'dotenv/config';
 import { createServer } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 import { MongoMemoryServer } from 'mongodb-memory-server';
@@ -18,13 +18,20 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 
-dotenv.config();
-
 // Define __dirname for ES modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Promise Rejection:', reason);
+});
+
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+  process.exit(1);
+});
 
 const server = createServer(app);
 
@@ -163,24 +170,24 @@ const seedAdmin = async () => {
 
 // MongoDB connection with fallback to in-memory database
 const connectDatabase = async () => {
+  const mongoUri = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/school-facility';
+
   try {
-    if (process.env.MONGO_URI && process.env.MONGO_URI.includes('mongodb')) {
-      await mongoose.connect(process.env.MONGO_URI, {
-        serverSelectionTimeoutMS: 3000,
-        socketTimeoutMS: 3000,
-      });
-      console.log('✅ Connected to MongoDB');
-      return;
-    }
+    await mongoose.connect(mongoUri, {
+      serverSelectionTimeoutMS: 3000,
+      socketTimeoutMS: 3000,
+    });
+    console.log(`✅ Connected to MongoDB at ${mongoUri}`);
+    return;
   } catch (error) {
-    console.log('📦 MongoDB unavailable, using in-memory database...');
+    console.log(`📦 MongoDB unavailable at ${mongoUri}, using in-memory database...`);
   }
 
   // Fallback to in-memory database
   try {
     const mongoServer = await MongoMemoryServer.create();
-    const mongoUri = mongoServer.getUri();
-    await mongoose.connect(mongoUri);
+    const mongoUriFallback = mongoServer.getUri();
+    await mongoose.connect(mongoUriFallback);
     console.log('✅ Connected to in-memory database');
   } catch (error) {
     console.error('❌ Database startup failed:', error.message);

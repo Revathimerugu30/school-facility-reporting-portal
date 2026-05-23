@@ -1,11 +1,12 @@
 import express from 'express';
+import { asyncHandler } from '../utils/asyncHandler.js';
 import { register, login, me } from '../controllers/authController.js';
 import { protect } from '../middleware/auth.js';
 
 const router = express.Router();
 
-router.post('/register', register);
-router.post('/login', login);
-router.get('/me', protect, me);
+router.post('/register', asyncHandler(register));
+router.post('/login', asyncHandler(login));
+router.get('/me', protect, asyncHandler(me));
 
 export default router;

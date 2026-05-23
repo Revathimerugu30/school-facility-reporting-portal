@@ -4,19 +4,59 @@ import api from '../../api/api.js';
 
 const colors = ['#0ea5e9', '#f97316', '#22c55e', '#a855f7', '#eab308'];
 
+const SkeletonLoader = () => (
+  <div className="space-y-6 animate-pulse">
+    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+      {[...Array(5)].map((_, i) => (
+        <div key={i} className="rounded-3xl border border-slate-200 bg-slate-100 p-6 shadow-sm">
+          <div className="h-4 bg-slate-300 rounded w-24"></div>
+          <div className="mt-4 h-8 bg-slate-300 rounded w-16"></div>
+        </div>
+      ))}
+    </div>
+    <div className="grid gap-6 xl:grid-cols-2">
+      <div className="rounded-3xl border border-slate-200 bg-slate-100 p-6 shadow-sm h-80"></div>
+      <div className="rounded-3xl border border-slate-200 bg-slate-100 p-6 shadow-sm h-80"></div>
+    </div>
+  </div>
+);
+
 const AdminHome = () => {
   const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const loadStats = async () => {
-      const response = await api.get('/admin/stats');
-      setStats(response.data);
+      try {
+        setLoading(true);
+        const response = await api.get('/admin/stats');
+        setStats(response.data);
+      } catch (error) {
+        console.error('Error loading stats:', error);
+        // Show empty stats on error
+        setStats({
+          total: 0,
+          pending: 0,
+          progress: 0,
+          resolved: 0,
+          highPriority: 0,
+          statusDistribution: [],
+          categoryDistribution: [],
+          recentIssues: [],
+        });
+      } finally {
+        setLoading(false);
+      }
     };
     loadStats();
   }, []);
 
+  if (loading) {
+    return <SkeletonLoader />;
+  }
+
   if (!stats) {
-    return <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">Loading admin dashboard...</div>;
+    return <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">Unable to load dashboard</div>;
   }
 
   return (

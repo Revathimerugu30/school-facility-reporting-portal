@@ -1,5 +1,13 @@
 import placeholder from '../assets/placeholder.svg';
 
+const getIssueImageUrl = (image) => {
+  if (!image) return placeholder;
+
+  const backendBase = (import.meta.env.VITE_API_URL || 'http://localhost:5000').replace(/\/api\/?$/, '');
+  if (image.startsWith('http')) return image;
+  return `${backendBase}${image.startsWith('/') ? '' : '/'}${image}`;
+};
+
 const IssueCard = ({ issue }) => {
   return (
     <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -7,7 +15,7 @@ const IssueCard = ({ issue }) => {
         <div className="flex items-start gap-4">
           <div className="flex-shrink-0">
             <img
-              src={issue.image || placeholder}
+              src={getIssueImageUrl(issue.image)}
               alt={issue.title || 'issue image'}
               loading="lazy"
               onError={(e) => { e.currentTarget.src = placeholder; }}

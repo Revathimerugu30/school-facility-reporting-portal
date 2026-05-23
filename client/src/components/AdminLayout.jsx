@@ -27,9 +27,9 @@ const AdminLayout = () => {
         const response = await api.get('/auth/me');
         localStorage.setItem('user', JSON.stringify(response.data.user));
       } catch (err) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        navigate('/login');
+        console.warn('Failed to sync user on mount (admin):', err?.response?.data || err.message || err);
+        // Don't remove token or force redirect here — allow the app to continue
+        // and let explicit user actions (logout) clear invalid sessions.
       }
     };
 

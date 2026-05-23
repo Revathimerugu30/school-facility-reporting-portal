@@ -3,6 +3,13 @@ import { useNavigate, useParams } from 'react-router-dom';
 import api from '../../api/api.js';
 import placeholder from '../../assets/placeholder.svg';
 
+const getIssueImageUrl = (image) => {
+  if (!image) return placeholder;
+  const backendBase = (import.meta.env.VITE_API_URL || 'http://localhost:5000').replace(/\/api\/?$/, '');
+  if (image.startsWith('http')) return image;
+  return `${backendBase}${image.startsWith('/') ? '' : '/'}${image}`;
+};
+
 const AdminIssueDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -57,7 +64,7 @@ const AdminIssueDetails = () => {
             <p><strong>Reported At:</strong> {new Date(issue.createdAt).toLocaleString()}</p>
           </div>
           <img
-            src={issue.image || placeholder}
+            src={getIssueImageUrl(issue.image)}
             alt={issue.title}
             loading="lazy"
             onError={(e) => { e.currentTarget.src = placeholder; }}
