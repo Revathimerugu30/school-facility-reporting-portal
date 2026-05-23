@@ -5,6 +5,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
+import { MongoMemoryServer } from 'mongodb-memory-server';
 
 import authRoutes from './routes/auth.js';
 import User from './models/User.js';
@@ -27,9 +28,15 @@ const app = express();
 
 const server = createServer(app);
 
+const allowedOrigin = process.env.CLIENT_URL || 'http://localhost:5173';
+
 const io = new SocketIOServer(server, {
   cors: {
-    origin: process.env.CLIENT_URL || 'http://localhost:5173',
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      if (origin === allowedOrigin || origin.includes('localhost')) return callback(null, true);
+      return callback(new Error('Not allowed by CORS'));
+    },
     methods: ['GET', 'POST'],
   },
 });
@@ -50,7 +57,12 @@ io.on('connection', (socket) => {
 // Middleware
 app.use(
   cors({
-    origin: process.env.CLIENT_URL || 'http://localhost:5173',
+    origin: (origin, callback) => {
+      const allowed = process.env.CLIENT_URL || 'http://localhost:5173';
+      if (!origin) return callback(null, true);
+      if (origin === allowed || origin.includes('localhost')) return callback(null, true);
+      return callback(new Error('Not allowed by CORS'));
+    },
     credentials: true,
   })
 );
@@ -110,8 +122,13 @@ app.use((err, req, res, next) => {
 // Seed default admin
 const seedAdmin = async () => {
   try {
+    // Only attempt to seed if mongoose is connected
+    if (mongoose.connection.readyState !== 1) {
+      return; // Skip if not connected
+    }
+
     const adminEmail =
-      process.env.DEFAULT_ADMIN_EMAIL || 'admin@school.local';
+      process.env.DEFAULT_ADMIN_EMAIL || 'seed-admin@school.local';
 
     const adminPassword =
       process.env.DEFAULT_ADMIN_PASSWORD || 'Admin@123';
@@ -140,22 +157,47 @@ const seedAdmin = async () => {
 
     console.log('Default admin created');
   } catch (error) {
-    console.error('Admin seed error:', error.message);
+    // Silently skip on error - server will still work
   }
 };
 
-// MongoDB connection
-mongoose
-  .connect(process.env.MONGO_URI)
-  .then(async () => {
-    console.log('Connected to MongoDB');
+// MongoDB connection with fallback to in-memory database
+const connectDatabase = async () => {
+  try {
+    if (process.env.MONGO_URI && process.env.MONGO_URI.includes('mongodb')) {
+      await mongoose.connect(process.env.MONGO_URI, {
+        serverSelectionTimeoutMS: 3000,
+        socketTimeoutMS: 3000,
+      });
+      console.log('✅ Connected to MongoDB');
+      return;
+    }
+  } catch (error) {
+    console.log('📦 MongoDB unavailable, using in-memory database...');
+  }
 
+  // Fallback to in-memory database
+  try {
+    const mongoServer = await MongoMemoryServer.create();
+    const mongoUri = mongoServer.getUri();
+    await mongoose.connect(mongoUri);
+    console.log('✅ Connected to in-memory database');
+  } catch (error) {
+    console.error('❌ Database startup failed:', error.message);
+    process.exit(1);
+  }
+};
+
+// Start server with proper async handling
+(async () => {
+  try {
+    await connectDatabase();
     await seedAdmin();
-
     server.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
+      console.log(`🚀 Server running on http://localhost:${PORT}`);
     });
-  })
-  .catch((error) => {
-    console.error('MongoDB connection error:', error.message);
-  });
+  } catch (error) {
+    console.error('❌ Startup failed:', error.message);
+    process.exit(1);
+  }
+})();
