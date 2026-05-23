@@ -5,9 +5,9 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
-      '/api': 'http://localhost:5000',
+      '/api': 'https://school-facility-reporting-portal.onrender.com',
       '/socket.io': {
-        target: 'http://localhost:5000',
+        target: 'https://school-facility-reporting-portal.onrender.com',
         ws: true,
       },
     },
