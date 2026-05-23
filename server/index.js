@@ -1,0 +1,128 @@
+import { createServer } from 'http';
+import { Server as SocketIOServer } from 'socket.io';
+import express from 'express';
+import cors from 'cors';
+import dotenv from 'dotenv';
+import mongoose from 'mongoose';
+import bcrypt from 'bcryptjs';
+import { MongoMemoryServer } from 'mongodb-memory-server';
+import authRoutes from './routes/auth.js';
+import User from './models/User.js';
+import issueRoutes from './routes/issues.js';
+import notificationRoutes from './routes/notifications.js';
+import userRoutes from './routes/users.js';
+import adminRoutes from './routes/admin.js';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
+
+dotenv.config();
+
+// Define __dirname for ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const app = express();
+const server = createServer(app);
+const io = new SocketIOServer(server, {
+  cors: {
+    origin: process.env.CLIENT_URL || 'http://localhost:5173',
+    methods: ['GET', 'POST'],
+  },
+});
+const PORT = process.env.PORT || 5000;
+
+app.set('io', io);
+
+io.on('connection', (socket) => {
+  socket.on('join', ({ userId }) => {
+    if (userId) {
+      socket.join(userId);
+    }
+  });
+});
+
+app.use(cors({ origin: process.env.CLIENT_URL || 'http://localhost:5173', credentials: true }));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+app.use('/api/auth', authRoutes);
+app.use('/api/issues', issueRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/admin', adminRoutes);
+
+// Serve client build (if present) so frontend and backend run from the same host
+const clientDist = path.join(__dirname, '..', 'client', 'dist');
+if (fs.existsSync(clientDist)) {
+  app.use(express.static(clientDist));
+  app.get('*', (req, res) => {
+    const indexPath = path.join(clientDist, 'index.html');
+    if (fs.existsSync(indexPath)) return res.sendFile(indexPath);
+    res.status(404).json({ error: 'Not found' });
+  });
+} else {
+  app.get('/', (req, res) => {
+    res.json({ message: 'School facility API is running.' });
+  });
+}
+
+app.use((req, res) => {
+  res.status(404).json({ error: 'Route not found' });
+});
+
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(err.status || 500).json({ error: err.message || 'Server error' });
+});
+
+const getDatabaseUri = async () => {
+  if (process.env.MONGO_URI) {
+    return process.env.MONGO_URI;
+  }
+
+  try {
+    const mongod = await MongoMemoryServer.create();
+    console.log('Using in-memory MongoDB for development');
+    return mongod.getUri();
+  } catch (error) {
+    console.error('Error starting MongoDB memory server:', error.message);
+    throw error;
+  }
+};
+
+const seedAdmin = async () => {
+  const adminEmail = process.env.DEFAULT_ADMIN_EMAIL || 'admin@school.local';
+  const adminPassword = process.env.DEFAULT_ADMIN_PASSWORD || 'Admin@123';
+  const adminName = process.env.DEFAULT_ADMIN_NAME || 'Admin';
+  const adminSchoolId = process.env.DEFAULT_ADMIN_SCHOOL_ID || 'ADMIN001';
+
+  const existingAdmin = await User.findOne({ email: adminEmail });
+  if (existingAdmin) return;
+
+  const hashedPassword = await bcrypt.hash(adminPassword, 10);
+  await User.create({
+    name: adminName,
+    email: adminEmail,
+    password: hashedPassword,
+    role: 'admin',
+    schoolId: adminSchoolId,
+  });
+  console.log('Default admin user created:', adminEmail);
+};
+
+getDatabaseUri()
+  .then((uri) => mongoose.connect(uri, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  }))
+  .then(async () => {
+    console.log('Connected to MongoDB');
+    await seedAdmin();
+    server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+  })
+  .catch((error) => {
+    console.error('MongoDB connection error:', error.message);
+  });

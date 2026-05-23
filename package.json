@@ -1,0 +1,17 @@
+{
+  "name": "school-facility",
+  "private": true,
+  "version": "1.0.0",
+  "workspaces": [
+    "client",
+    "server"
+  ],
+  "scripts": {
+    "dev": "npx concurrently \"npm --prefix server run dev\" \"npm --prefix client run dev\"",
+    "install-all": "npm install --workspaces",
+    "start": "npm --prefix client run build && npm --prefix server run start"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
